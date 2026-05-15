@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
                 <YAxis tick={{ fontSize: 12, fill: '#888' }} />
                 <Tooltip
                   contentStyle={{ background: '#fff', border: '1px solid #E5E5E5', borderRadius: '12px', fontSize: '12px' }}
-                  formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                  formatter={(value: any) => [formatCurrency(value), 'Revenue']}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#C4943D" fill="url(#colorRevenue)" strokeWidth={2} />
               </AreaChart>
