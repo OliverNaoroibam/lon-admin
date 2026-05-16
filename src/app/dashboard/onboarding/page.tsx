@@ -3,8 +3,23 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/header';
+import ImageCropUploader from '@/components/image-crop-uploader';
 import { formatDate } from '@/lib/utils';
-import { Sparkles, Loader2, Plus, X, Save, Trash2, GripVertical } from 'lucide-react';
+import { Sparkles, Loader2, Plus, X, Save, Trash2, GripVertical, Upload, ImageIcon } from 'lucide-react';
+
+// Upload helper
+async function uploadSlideImage(dataUrl: string): Promise<string> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+  const fileName = `onboarding/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage
+    .from('profile-photos')  // reuse existing public bucket
+    .upload(fileName, blob, { contentType: blob.type, upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from('profile-photos').getPublicUrl(fileName);
+  return data.publicUrl;
+}
 
 interface Slide {
   id: string;
@@ -26,8 +41,21 @@ export default function OnboardingPage() {
   const [editing, setEditing] = useState<Slide | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    title: '', subtitle: '', emoji: '', gradient_start: '#8B2252', gradient_end: '#C2185B', sort_order: 0,
+    title: '', subtitle: '', emoji: '', image_url: '',
+    gradient_start: '#8B2252', gradient_end: '#C2185B', sort_order: 0,
   });
+  const [showCropper, setShowCropper] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  async function handleCropped(dataUrl: string) {
+    setShowCropper(false);
+    setUploadingImage(true);
+    try {
+      const url = await uploadSlideImage(dataUrl);
+      setForm((f) => ({ ...f, image_url: url }));
+    } catch { alert('Upload failed.'); }
+    finally { setUploadingImage(false); }
+  }
 
   useEffect(() => { fetchSlides(); }, []);
 
@@ -42,11 +70,13 @@ export default function OnboardingPage() {
     if (editing) {
       await supabase.from('OnboardingSlide').update({
         title: form.title, subtitle: form.subtitle, emoji: form.emoji || null,
+        image_url: form.image_url || null,
         gradient_start: form.gradient_start, gradient_end: form.gradient_end, sort_order: form.sort_order,
       }).eq('id', editing.id);
     } else {
       await supabase.from('OnboardingSlide').insert({
         title: form.title, subtitle: form.subtitle, emoji: form.emoji || null,
+        image_url: form.image_url || null,
         gradient_start: form.gradient_start, gradient_end: form.gradient_end, sort_order: form.sort_order, is_active: true,
       });
     }
@@ -69,7 +99,11 @@ export default function OnboardingPage() {
 
   function openEdit(s: Slide) {
     setEditing(s);
-    setForm({ title: s.title, subtitle: s.subtitle, emoji: s.emoji || '', gradient_start: s.gradient_start, gradient_end: s.gradient_end, sort_order: s.sort_order });
+    setForm({
+      title: s.title, subtitle: s.subtitle, emoji: s.emoji || '',
+      image_url: s.image_url || '',
+      gradient_start: s.gradient_start, gradient_end: s.gradient_end, sort_order: s.sort_order
+    });
     setShowModal(true);
   }
 
@@ -151,6 +185,42 @@ export default function OnboardingPage() {
                     className="w-full h-[42px] rounded-xl border border-border cursor-pointer" />
                 </div>
               </div>
+
+              {/* Background Image Upload */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wider">
+                  Background Image <span className="text-text-tertiary normal-case font-normal">(optional — 9:16 portrait, overlays gradient)</span>
+                </label>
+                <div className={`relative rounded-xl border-2 overflow-hidden transition-all ${
+                  form.image_url ? 'border-border' : 'border-dashed border-border hover:border-gold/40'
+                }`}>
+                  {form.image_url ? (
+                    <div className="relative h-28">
+                      <img src={form.image_url} alt="Slide bg" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-colors flex items-center justify-center gap-2 group">
+                        <button onClick={() => setShowCropper(true)}
+                          className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg text-xs font-medium shadow-lg hover:bg-gold hover:text-white transition-all">
+                          <Upload className="w-3.5 h-3.5" /> Replace
+                        </button>
+                        <button onClick={() => setForm((f) => ({ ...f, image_url: '' }))}
+                          className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg text-xs font-medium shadow-lg hover:bg-error hover:text-white transition-all">
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowCropper(true)} disabled={uploadingImage}
+                      className="w-full py-5 flex flex-col items-center gap-1.5 hover:bg-bg/50 transition-colors">
+                      {uploadingImage
+                        ? <Loader2 className="w-5 h-5 text-gold animate-spin" />
+                        : <ImageIcon className="w-5 h-5 text-text-tertiary" />}
+                      <span className="text-xs text-text-secondary">
+                        {uploadingImage ? 'Uploading…' : 'Add background photo (9:16)'}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              </div>
               {/* Preview */}
               <div className="rounded-xl h-24 flex items-end p-3"
                 style={{ background: `linear-gradient(135deg, ${form.gradient_start}, ${form.gradient_end})` }}>
@@ -169,6 +239,15 @@ export default function OnboardingPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showCropper && (
+        <ImageCropUploader
+          preset="onboarding_slide"
+          label="Onboarding Slide Background"
+          onCropped={handleCropped}
+          onCancel={() => setShowCropper(false)}
+        />
       )}
     </>
   );

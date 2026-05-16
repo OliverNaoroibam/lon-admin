@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/header';
+import ImageCropUploader from '@/components/image-crop-uploader';
 import { formatDate } from '@/lib/utils';
 import {
   Plus,
@@ -14,7 +15,23 @@ import {
   X,
   Save,
   ChevronRight,
+  Upload,
+  ImageIcon,
 } from 'lucide-react';
+
+// Upload helper: crop dataURL → Supabase Storage → public URL
+async function uploadCroppedImage(dataUrl: string, folder: string): Promise<string> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+  const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage
+    .from('product-images')
+    .upload(fileName, blob, { contentType: blob.type, upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
+  return data.publicUrl;
+}
 
 interface Category {
   id: string;
@@ -42,10 +59,25 @@ export default function CategoriesPage() {
     name: '',
     slug: '',
     description: '',
+    image_url: '',
     parent_id: '',
     display_order: 0,
     is_active: true,
   });
+
+  // Crop state
+  const [showCropper, setShowCropper] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  async function handleCropped(dataUrl: string) {
+    setShowCropper(false);
+    setUploadingImage(true);
+    try {
+      const url = await uploadCroppedImage(dataUrl, 'categories');
+      setForm((f) => ({ ...f, image_url: url }));
+    } catch { alert('Image upload failed.'); }
+    finally { setUploadingImage(false); }
+  }
 
   useEffect(() => {
     fetchCategories();
@@ -86,6 +118,7 @@ export default function CategoriesPage() {
       name: '',
       slug: '',
       description: '',
+      image_url: '',
       parent_id: parentId || '',
       display_order: 0,
       is_active: true,
@@ -99,6 +132,7 @@ export default function CategoriesPage() {
       name: cat.name,
       slug: cat.slug,
       description: cat.description || '',
+      image_url: cat.image_url || '',
       parent_id: cat.parent_id || '',
       display_order: cat.display_order,
       is_active: cat.is_active,
@@ -112,6 +146,7 @@ export default function CategoriesPage() {
       name: form.name,
       slug: form.slug || form.name.toLowerCase().replace(/\s+/g, '-'),
       description: form.description || null,
+      image_url: form.image_url || null,
       parent_id: form.parent_id || null,
       display_order: form.display_order,
       is_active: form.is_active,
@@ -328,6 +363,39 @@ export default function CategoriesPage() {
                 />
               </div>
 
+              {/* Category Tile Image */}
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wider">
+                  Category Image <span className="text-text-tertiary normal-case font-normal">(1:1 square, 600×600px)</span>
+                </label>
+                <div className={`relative rounded-xl border-2 overflow-hidden transition-all ${
+                  form.image_url ? 'border-border' : 'border-dashed border-border hover:border-gold/40'
+                }`}>
+                  {form.image_url ? (
+                    <div className="relative">
+                      <img src={form.image_url} alt="Category" className="w-full h-28 object-cover" />
+                      <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-colors flex items-center justify-center group">
+                        <button onClick={() => setShowCropper(true)} disabled={uploadingImage}
+                          className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg text-xs font-medium shadow-lg hover:bg-gold hover:text-white transition-all">
+                          {uploadingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                          Replace
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowCropper(true)} disabled={uploadingImage}
+                      className="w-full py-6 flex flex-col items-center gap-2 hover:bg-bg/50 transition-colors">
+                      {uploadingImage
+                        ? <Loader2 className="w-5 h-5 text-gold animate-spin" />
+                        : <ImageIcon className="w-5 h-5 text-text-tertiary" />}
+                      <span className="text-xs text-text-secondary">
+                        {uploadingImage ? 'Uploading…' : 'Upload & crop image'}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wider">
@@ -373,6 +441,16 @@ export default function CategoriesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Crop modal for category tile images */}
+      {showCropper && (
+        <ImageCropUploader
+          preset="category_tile"
+          label="Category Tile Image"
+          onCropped={handleCropped}
+          onCancel={() => setShowCropper(false)}
+        />
       )}
     </>
   );
