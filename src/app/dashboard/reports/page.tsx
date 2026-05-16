@@ -7,7 +7,10 @@ import { formatDate, formatCurrency } from '@/lib/utils';
 import { Flag, Loader2, Download, Calendar, IndianRupee, FileText, RefreshCw } from 'lucide-react';
 
 interface CommissionSettings {
-  platform_commission_pct: number;
+  commission_buy_traditional: number;
+  commission_rent_traditional: number;
+  commission_modern: number;
+  commission_thrift: number;
   tcs_rate: number;
   max_cod_amount: number;
   min_payout_amount: number;
@@ -22,7 +25,10 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    platform_commission_pct: 8,
+    commission_buy_traditional: 8,
+    commission_rent_traditional: 15,
+    commission_modern: 10,
+    commission_thrift: 12,
     tcs_rate: 1,
     max_cod_amount: 5000,
     min_payout_amount: 500,
@@ -38,7 +44,10 @@ export default function ReportsPage() {
     const { data } = await supabase.from('PlatformSettings').select('*').limit(1).single();
     if (data) {
       const s = {
-        platform_commission_pct: data.platform_commission_pct || 8,
+        commission_buy_traditional: data.commission_buy_traditional || 8,
+        commission_rent_traditional: data.commission_rent_traditional || 15,
+        commission_modern: data.commission_modern || 10,
+        commission_thrift: data.commission_thrift || 12,
         tcs_rate: data.tcs_rate || 1,
         max_cod_amount: data.max_cod_amount || 5000,
         min_payout_amount: data.min_payout_amount || 500,
@@ -56,7 +65,10 @@ export default function ReportsPage() {
   async function handleSaveSettings() {
     setSaving(true);
     await supabase.from('PlatformSettings').update({
-      platform_commission_pct: form.platform_commission_pct,
+      commission_buy_traditional: form.commission_buy_traditional,
+      commission_rent_traditional: form.commission_rent_traditional,
+      commission_modern: form.commission_modern,
+      commission_thrift: form.commission_thrift,
       tcs_rate: form.tcs_rate,
       max_cod_amount: form.max_cod_amount,
       min_payout_amount: form.min_payout_amount,
@@ -89,13 +101,31 @@ export default function ReportsPage() {
                 <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 text-gold animate-spin" /></div>
               ) : (
                 <>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wider">Buy Traditional (%)</label>
+                      <input type="number" value={form.commission_buy_traditional} onChange={(e) => setForm({ ...form, commission_buy_traditional: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-4 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:border-gold" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wider">Rent Traditional (%)</label>
+                      <input type="number" value={form.commission_rent_traditional} onChange={(e) => setForm({ ...form, commission_rent_traditional: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-4 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:border-gold" />
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wider">Commission Rate (%)</label>
-                      <input type="number" value={form.platform_commission_pct} onChange={(e) => setForm({ ...form, platform_commission_pct: parseFloat(e.target.value) || 0 })}
+                      <label className="block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wider">Modern (%)</label>
+                      <input type="number" value={form.commission_modern} onChange={(e) => setForm({ ...form, commission_modern: parseFloat(e.target.value) || 0 })}
                         className="w-full px-4 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:border-gold" />
-                      <p className="text-[10px] text-text-tertiary mt-1">Platform cut per sale</p>
                     </div>
+                    <div>
+                      <label className="block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wider">Thrift (%)</label>
+                      <input type="number" value={form.commission_thrift} onChange={(e) => setForm({ ...form, commission_thrift: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-4 py-2.5 bg-bg border border-border rounded-xl text-sm focus:outline-none focus:border-gold" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 mt-4 mb-4">
                     <div>
                       <label className="block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wider">TCS Rate (%)</label>
                       <input type="number" value={form.tcs_rate} onChange={(e) => setForm({ ...form, tcs_rate: parseFloat(e.target.value) || 0 })}

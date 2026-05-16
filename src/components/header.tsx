@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Search } from 'lucide-react';
+import { Bell, Search, Printer } from 'lucide-react';
 
 export default function Header({ title }: { title: string }) {
   return (
@@ -16,6 +16,15 @@ export default function Header({ title }: { title: string }) {
             className="w-64 pl-10 pr-4 py-2 bg-bg border border-border rounded-xl text-sm text-text-primary placeholder-text-tertiary focus:outline-none focus:border-gold transition-colors"
           />
         </div>
+
+        {/* Print Button */}
+        <button 
+          onClick={() => window.print()}
+          className="relative p-2 rounded-xl hover:bg-bg transition-colors"
+          title="Print Page"
+        >
+          <Printer className="w-5 h-5 text-text-secondary" />
+        </button>
 
         {/* Notifications */}
         <button className="relative p-2 rounded-xl hover:bg-bg transition-colors">

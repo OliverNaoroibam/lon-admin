@@ -87,3 +87,25 @@
 .badge-gold {
   @apply bg-gold/10 text-gold-dark;
 }
+
+/* Print Styles */
+@media print {
+  /* Hide sidebar, header, and buttons when printing */
+  nav, header, button {
+    display: none !important;
+  }
+  
+  /* Ensure main content takes full width and height */
+  body, main, .p-8 {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Remove borders and shadows for a clean look */
+  .border, .shadow-sm {
+    border-color: #ddd !important;
+    box-shadow: none !important;
+  }
+}
